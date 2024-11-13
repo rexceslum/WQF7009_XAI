@@ -3,6 +3,7 @@ from utils import DataLoader
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, accuracy_score
 import shap
+import matplotlib.pyplot as plt
 
 # %% Load and preprocess data
 data_loader = DataLoader()
@@ -12,40 +13,79 @@ data_loader.preprocess_data()
 X_train, X_test, y_train, y_test = data_loader.get_data_split()
 # Oversample the train data
 X_train, y_train = data_loader.oversample(X_train, y_train)
-print(X_train.shape)
-print(X_test.shape)
+print("X_train.shape ->", X_train.shape)
+print("X_test.shape ->", X_test.shape)
 
 # %% Fit blackbox model
 rf = RandomForestClassifier()
 rf.fit(X_train, y_train)
 y_pred = rf.predict(X_test)
-print(f"F1 Score {f1_score(y_test, y_pred, average='macro')}")
-print(f"Accuracy {accuracy_score(y_test, y_pred)}")
+print(f"F1 Score -> {f1_score(y_test, y_pred, average='macro')}")
+print(f"Accuracy -> {accuracy_score(y_test, y_pred)}")
 
 # %% Create SHAP explainer
 explainer = shap.TreeExplainer(rf)
 # Calculate shapley values for test data
 start_index = 1
-end_index = 2
-shap_values = explainer.shap_values(X_test[start_index:end_index])
-X_test[start_index:end_index]
+end_index = 61
+X_test_subset = X_test[start_index:end_index]
+shap_values = explainer.shap_values(X_test_subset)
+print("X_test_subset.shape ->", X_test_subset.shape)
 
 # %% Investigating the values (classification problem)
 # class 0 = contribution to class 1
 # class 1 = contribution to class 2
-print(shap_values[0].shape)
-shap_values
+print("shap_values.shape ->", shap_values.shape)
+print("shap_values[0][0] ->", shap_values[0][0])
+print("shap_values[0][0] -> [class 0, class 1]")
 
 # %% >> Visualize local predictions
 shap.initjs()
+
 # Force plot
-prediction = rf.predict(X_test[start_index:end_index])[0]
-print(f"The RF predicted: {prediction}")
-shap.force_plot(explainer.expected_value[1],
-                shap_values[1],
-                X_test[start_index:end_index]) # for values
+prediction = rf.predict(X_test_subset)[8]
+print("subset prediction ->", rf.predict(X_test_subset))
+print(f"The RF predicted -> {prediction}")
+print("base value of [class 0, class 1] ->", explainer.expected_value)
+print("X_test_subset.iloc[8].shape ->", X_test_subset.iloc[8].shape)
+print("shap_values[8][:, 1].shape ->", shap_values[1][:, 1].shape)
+
+# force plot for 1 sample
+force_plot = shap.force_plot(explainer.expected_value[1], 
+                            shap_values[8][:, 1], 
+                            X_test_subset.iloc[8])
+shap.save_html("./xai-series-master/data/force_plot.html", force_plot)
 
 # %% >> Visualize global features
 # Feature summary
-shap.summary_plot(shap_values, X_test)
+summary_plot = shap.summary_plot(shap_values[:,:,1], X_test_subset, show=False)
+plt.savefig("./xai-series-master/data/summary_plot.png", bbox_inches="tight")
 
+# Explore explainability using Kernel SHAP
+# Select a background dataset (this is a subset of X_train)
+background_dataset = X_train.sample(100)
+# Define the model's prediction function
+def model_predict(X):
+    return rf.predict_proba(X)  # For classification, we need the probabilities
+
+# Create Kernel SHAP explainer
+kernel_explainer = shap.KernelExplainer(model_predict, background_dataset)
+# Calculate shap values
+start_index2 = 5
+end_index2 = 15
+X_test_subset2 = X_test[start_index2:end_index2]
+kernel_shap_values = kernel_explainer.shap_values(X_test_subset2)
+print("kernel_shap_values.shape ->", kernel_shap_values.shape)
+print("kernel_explainer.expected_value ->", kernel_explainer.expected_value)
+print("subset prediction ->", rf.predict(X_test_subset2))
+
+# force plot for 1 sample
+force_plot2 = shap.force_plot(kernel_explainer.expected_value[1], 
+                            kernel_shap_values[8][:, 1], 
+                            X_test_subset2.iloc[8])
+shap.save_html("./xai-series-master/data/kernel_force_plot.html", force_plot)
+
+# %% >> Visualize global features
+# Feature summary
+summary_plot2 = shap.summary_plot(kernel_shap_values[:,:,1], X_test_subset2, show=False)
+plt.savefig("./xai-series-master/data/kernel_summary_plot.png", bbox_inches="tight")
