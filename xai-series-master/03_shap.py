@@ -27,7 +27,7 @@ print(f"Accuracy -> {accuracy_score(y_test, y_pred)}")
 explainer = shap.TreeExplainer(rf)
 # Calculate shapley values for test data
 start_index = 1
-end_index = 61
+end_index = 101
 X_test_subset = X_test[start_index:end_index]
 shap_values = explainer.shap_values(X_test_subset)
 print("X_test_subset.shape ->", X_test_subset.shape)
@@ -60,32 +60,3 @@ shap.save_html("./xai-series-master/data/force_plot.html", force_plot)
 # Feature summary
 summary_plot = shap.summary_plot(shap_values[:,:,1], X_test_subset, show=False)
 plt.savefig("./xai-series-master/data/summary_plot.png", bbox_inches="tight")
-
-# Explore explainability using Kernel SHAP
-# Select a background dataset (this is a subset of X_train)
-background_dataset = X_train.sample(100)
-# Define the model's prediction function
-def model_predict(X):
-    return rf.predict_proba(X)  # For classification, we need the probabilities
-
-# Create Kernel SHAP explainer
-kernel_explainer = shap.KernelExplainer(model_predict, background_dataset)
-# Calculate shap values
-start_index2 = 5
-end_index2 = 15
-X_test_subset2 = X_test[start_index2:end_index2]
-kernel_shap_values = kernel_explainer.shap_values(X_test_subset2)
-print("kernel_shap_values.shape ->", kernel_shap_values.shape)
-print("kernel_explainer.expected_value ->", kernel_explainer.expected_value)
-print("subset prediction ->", rf.predict(X_test_subset2))
-
-# force plot for 1 sample
-force_plot2 = shap.force_plot(kernel_explainer.expected_value[1], 
-                            kernel_shap_values[8][:, 1], 
-                            X_test_subset2.iloc[8])
-shap.save_html("./xai-series-master/data/kernel_force_plot.html", force_plot)
-
-# %% >> Visualize global features
-# Feature summary
-summary_plot2 = shap.summary_plot(kernel_shap_values[:,:,1], X_test_subset2, show=False)
-plt.savefig("./xai-series-master/data/kernel_summary_plot.png", bbox_inches="tight")
