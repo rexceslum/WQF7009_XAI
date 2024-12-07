@@ -12,12 +12,12 @@ import pandas as pd
 
 # Set GPU device
 print(torch.cuda.is_available())
-device = torch.device("cuda:0")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 # %% Load data
-TRAIN_ROOT = "data/brain_mri/training"
-TEST_ROOT = "data/brain_mri/testing"
+TRAIN_ROOT = "./xai-series-master/data/brain_mri/Training"
+TEST_ROOT = "./xai-series-master/data/brain_mri/Testing"
 train_dataset = torchvision.datasets.ImageFolder(root=TRAIN_ROOT)
 test_dataset = torchvision.datasets.ImageFolder(root=TRAIN_ROOT)
 
@@ -92,7 +92,6 @@ for epoch in range(epochs):
         print(loss)
 
 # %% Inspect predictions for first batch
-import pandas as pd
 inputs, labels = next(iter(test_loader))
 inputs = inputs.to(device)
 labels = labels.numpy()
