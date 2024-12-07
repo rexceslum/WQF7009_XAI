@@ -54,9 +54,9 @@ print("shap_values[8][:, 1].shape ->", shap_values[1][:, 1].shape)
 force_plot = shap.force_plot(explainer.expected_value[1], 
                             shap_values[8][:, 1], 
                             X_test_subset.iloc[8])
-shap.save_html("./xai-series-master/data/force_plot.html", force_plot)
+shap.save_html("./xai-series-master/data/result/force_plot.html", force_plot)
 
 # %% >> Visualize global features
 # Feature summary
 summary_plot = shap.summary_plot(shap_values[:,:,1], X_test_subset, show=False)
-plt.savefig("./xai-series-master/data/summary_plot.png", bbox_inches="tight")
+plt.savefig("./xai-series-master/data/result/summary_plot.png", bbox_inches="tight")

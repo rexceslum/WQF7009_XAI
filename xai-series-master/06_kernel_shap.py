@@ -45,9 +45,9 @@ print("subset prediction ->", rf.predict(X_test_subset2))
 force_plot2 = shap.force_plot(kernel_explainer.expected_value[1], 
                             kernel_shap_values[8][:, 1], 
                             X_test_subset2.iloc[8])
-shap.save_html("./xai-series-master/data/kernel_force_plot.html", force_plot2)
+shap.save_html("./xai-series-master/data/result/kernel_force_plot.html", force_plot2)
 
 # %% >> Visualize global features
 # Feature summary
 summary_plot2 = shap.summary_plot(kernel_shap_values[:,:,1], X_test_subset2, show=False)
-plt.savefig("./xai-series-master/data/kernel_summary_plot.png", bbox_inches="tight")
+plt.savefig("./xai-series-master/data/result/kernel_summary_plot.png", bbox_inches="tight")

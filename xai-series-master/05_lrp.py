@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import torch.optim as optim
 import copy
 import pandas as pd 
+import os
 
 # Set GPU device
 print(torch.cuda.is_available())
@@ -16,6 +17,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 # %% Load data
+model_save_path = "./xai-series-master/model/trained_vgg16_model.pth"
 TRAIN_ROOT = "./xai-series-master/data/brain_mri/Training"
 TEST_ROOT = "./xai-series-master/data/brain_mri/Testing"
 train_dataset = torchvision.datasets.ImageFolder(root=TRAIN_ROOT)
@@ -26,7 +28,7 @@ test_dataset = torchvision.datasets.ImageFolder(root=TRAIN_ROOT)
 class CNNModel(nn.Module):
     def __init__(self):
         super(CNNModel, self).__init__()
-        self.vgg16 = models.vgg16(pretrained=True) 
+        self.vgg16 = models.vgg16(weights=models.VGG16_Weights.IMAGENET1K_V1)
 
         # Replace output layer according to our problem
         in_feats = self.vgg16.classifier[6].in_features 
@@ -37,7 +39,13 @@ class CNNModel(nn.Module):
         return x
 
 model = CNNModel()
-model.to(device)
+if os.path.exists(model_save_path):
+    model.load_state_dict(torch.load(model_save_path))
+    model.to(device)
+    model.eval()
+else:
+    model.to(device)
+    
 model
 
 # %% Prepare data for pretrained model
@@ -74,22 +82,27 @@ test_loader = torch.utils.data.DataLoader(
 
 # %% Train
 cross_entropy_loss = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.00001)
+optimizer = optim.Adam(model.parameters(), lr=0.00005)
 epochs = 10
 
 # Iterate x epochs over the train data
-for epoch in range(epochs):  
-    for i, batch in enumerate(train_loader, 0):
-        inputs, labels = batch
-        inputs = inputs.to(device)
-        labels = labels.to(device)
-        optimizer.zero_grad()
-        outputs = model(inputs)
-        # Labels are automatically one-hot-encoded
-        loss = cross_entropy_loss(outputs, labels)
-        loss.backward()
-        optimizer.step()
-        print(loss)
+if not os.path.exists(model_save_path):
+    for epoch in range(epochs):  
+        for i, batch in enumerate(train_loader, 0):
+            inputs, labels = batch
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            # Labels are automatically one-hot-encoded
+            loss = cross_entropy_loss(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            print(f"epoch: {epoch} batch: {i} loss: {loss}")
+        
+    # Save the model after training
+    torch.save(model.state_dict(), model_save_path)
+    print(f"Model saved to {model_save_path}")
 
 # %% Inspect predictions for first batch
 inputs, labels = next(iter(test_loader))
@@ -97,7 +110,7 @@ inputs = inputs.to(device)
 labels = labels.numpy()
 outputs = model(inputs).max(1).indices.detach().cpu().numpy()
 comparison = pd.DataFrame()
-print("Batch accuracy: ", (labels==outputs).sum()/len(labels))
+print("Batch accuracy: ", (labels==outputs).sum()/len(labels)) # Batch accuracy:  0.84375
 comparison["labels"] = labels
 
 comparison["outputs"] = outputs
@@ -228,11 +241,14 @@ if outputs[image_id] == labels[image_id]:
     print("Groundtruth for this image: ", pred_label)
 
     # Plot images next to each other
-    plt.axis('off')
     plt.subplot(1,2,1)
+    plt.axis('off')
     plt.imshow(image_relevances[:,:,0], cmap="seismic")
     plt.subplot(1,2,2)
+    plt.axis('off')
     plt.imshow(inputs[image_id].permute(1,2,0).detach().cpu().numpy())
+    save_path = f"./xai-series-master/data/result/lrp_{pred_label}_{image_id}"
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.show()
 else:
     print("This image is not classified correctly.")
