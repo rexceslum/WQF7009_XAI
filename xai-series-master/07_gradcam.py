@@ -113,7 +113,7 @@ comparison["labels"] = labels
 comparison["outputs"] = outputs
 comparison
 
-# Grad-CAM for VGG16
+# %% Grad-CAM for VGG16
 # Select the target layer for Grad-CAM
 target_layer = model.vgg16.features[28]  # Last convolutional layer in VGG16
 
